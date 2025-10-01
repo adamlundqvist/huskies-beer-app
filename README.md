@@ -1,11 +1,11 @@
 # Huskies Beer Rating App
 
-A mobile-first web application for the Huskies ice hockey team to rate beers and sekt during events.
+A mobile-first web application for the Huskies ice hockey team to rate beers, sekt, and sonstiges during events.
 
 ## Features
 
 - Create events with dates
-- Add beers/sekt to events
+- Add beers/sekt/sonstiges to events
 - Rate drinks with star system
 - View average ratings and individual ratings
 - Mobile-optimized responsive design

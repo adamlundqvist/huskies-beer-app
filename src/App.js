@@ -929,7 +929,7 @@ function App() {
                   <label className="block text-sm font-semibold mb-2 text-blue-900">
                     Art des Getränks *
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <button
                       onClick={() => setNewBeer({...newBeer, type: 'Bier'})}
                       className={`p-3 rounded-lg border-2 transition-colors ${
@@ -949,6 +949,16 @@ function App() {
                       }`}
                     >
                       🥂 Sekt
+                    </button>
+                    <button
+                      onClick={() => setNewBeer({...newBeer, type: 'Sonstiges'})}
+                      className={`p-3 rounded-lg border-2 transition-colors ${
+                        newBeer.type === 'Sonstiges' 
+                          ? 'border-blue-600 bg-blue-50 text-blue-900' 
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      🍹 Sonstiges
                     </button>
                   </div>
                 </div>

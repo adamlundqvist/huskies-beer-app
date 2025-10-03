@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 // Icons
 const PlusIcon = () => (
@@ -236,7 +236,7 @@ function App() {
   // Sync selected event/beer from URL params
   useEffect(() => {
     // Extract event ID from URL like /event/abc123 or /event/abc123/add-beers
-    const eventMatch = location.pathname.match(/^\/event\/([^\/]+)/);
+    const eventMatch = location.pathname.match(/^\/event\/([^/]+)/);
     if (eventMatch) {
       const eventId = eventMatch[1];
       const event = events.find(e => e.id === eventId);
@@ -249,7 +249,7 @@ function App() {
     }
 
     // Extract beer ID from URL like /beer/xyz789
-    const beerMatch = location.pathname.match(/^\/beer\/([^\/]+)/);
+    const beerMatch = location.pathname.match(/^\/beer\/([^/]+)/);
     if (beerMatch) {
       const beerId = beerMatch[1];
       const beer = beers.find(b => b.id === beerId);

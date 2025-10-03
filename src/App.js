@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
 
 // Icons
 const PlusIcon = () => (
@@ -203,7 +204,8 @@ const createApiClient = () => {
 const airtableApi = createApiClient();
 
 function App() {
-  const [currentView, setCurrentView] = useState('home'); // Changed default to 'home'
+  const navigate = useNavigate();
+  const location = useLocation();
   const [events, setEvents] = useState([]);
   const [beers, setBeers] = useState([]);
   const [eventBeers, setEventBeers] = useState([]);
@@ -230,6 +232,35 @@ function App() {
   useEffect(() => {
     loadAllData();
   }, []);
+
+  // Sync selected event/beer from URL params
+  useEffect(() => {
+    // Extract event ID from URL like /event/abc123 or /event/abc123/add-beers
+    const eventMatch = location.pathname.match(/^\/event\/([^\/]+)/);
+    if (eventMatch) {
+      const eventId = eventMatch[1];
+      const event = events.find(e => e.id === eventId);
+      if (event && event.id !== selectedEvent?.id) {
+        setSelectedEvent(event);
+      } else if (!event && events.length > 0) {
+        // Event not found and data is loaded, redirect to home
+        navigate('/');
+      }
+    }
+
+    // Extract beer ID from URL like /beer/xyz789
+    const beerMatch = location.pathname.match(/^\/beer\/([^\/]+)/);
+    if (beerMatch) {
+      const beerId = beerMatch[1];
+      const beer = beers.find(b => b.id === beerId);
+      if (beer && beer.id !== selectedBeer?.id) {
+        setSelectedBeer(beer);
+      } else if (!beer && beers.length > 0) {
+        // Beer not found and data is loaded, redirect to home
+        navigate('/');
+      }
+    }
+  }, [location.pathname, events, beers, selectedEvent?.id, selectedBeer?.id, navigate]);
 
   const loadAllData = async () => {
     setLoading(true);
@@ -309,7 +340,7 @@ function App() {
         });
         
         setSelectedDate('');
-        setCurrentView('events');
+        navigate('/events');
         
         alert('✅ Event erfolgreich erstellt!');
         
@@ -661,7 +692,7 @@ function App() {
           <div className="flex items-center gap-3">
             {showBack && (
               <button
-                onClick={() => setCurrentView('home')}
+                onClick={() => navigate(-1)}
                 className="p-2 text-blue-900 hover:bg-blue-100 rounded-lg transition-colors"
               >
                 <BackIcon />
@@ -714,7 +745,19 @@ function App() {
   }
 
   // Beer Details View
-  if (currentView === 'beerDetails') {
+  if (location.pathname.startsWith('/beer/')) {
+    if (!selectedBeer) {
+      // Still loading or beer not found
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 flex items-center justify-center">
+          <div className="text-white text-center">
+            <LoadingIcon />
+            <p className="mt-4">Lade Bierdetails...</p>
+          </div>
+        </div>
+      );
+    }
+    
     const beerId = selectedBeer.id;
     const beerRatings = getAllRatingsForBeer(beerId);
     const avgRating = beerRatings.length > 0 ? (beerRatings.reduce((acc, r) => acc + r.rating, 0) / beerRatings.length).toFixed(1) : 0;
@@ -785,7 +828,19 @@ function App() {
   }
 
   // Event Details View - Enhanced for team workflow
-  if (currentView === 'eventDetails') {
+  if (location.pathname.startsWith('/event/') && !location.pathname.includes('/add-beers')) {
+    if (!selectedEvent) {
+      // Still loading or event not found
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 flex items-center justify-center">
+          <div className="text-white text-center">
+            <LoadingIcon />
+            <p className="mt-4">Lade Event...</p>
+          </div>
+        </div>
+      );
+    }
+    
     const eventId = selectedEvent.id;
     const eventBeersList = getEventBeersForEvent(eventId);
     const totalRatings = eventBeersList.reduce((sum, beer) => sum + getRatingsCount(eventId, beer.id), 0);
@@ -844,30 +899,30 @@ function App() {
               </div>
             </div>
             
-            {/* Quick Actions */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <button
-                onClick={() => setCurrentView('addBeers')}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
-              >
-                <PlusIcon />
+                {/* Quick Actions */}
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <button
+                onClick={() => navigate('/event/' + selectedEvent.id + '/add-beers')}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                  >
+                    <PlusIcon />
                 Getränke
-              </button>
-              <button
+                  </button>
+                  <button
                 onClick={() => {
                   if (eventBeersList.length === 0) {
                     alert('Erst Getränke zum Event hinzufügen!');
                     return;
                   }
-                  setCurrentView('rateBeers');
+                  navigate('/rate-beers');
                 }}
-                className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
-              >
-                <StarIcon filled={true} />
-                Bewerten
-              </button>
-            </div>
-            
+                    className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                  >
+                    <StarIcon filled={true} />
+                    Bewerten
+                  </button>
+                </div>
+
             {eventBeersList.length === 0 ? (
               <div className="bg-white bg-opacity-10 backdrop-blur rounded-2xl p-8 text-center">
                 <div className="text-6xl mb-4">🍺</div>
@@ -890,7 +945,7 @@ function App() {
                         className="bg-white bg-opacity-10 backdrop-blur rounded-xl p-4 cursor-pointer hover:bg-opacity-20 transition-all"
                         onClick={() => {
                           setSelectedBeer(beer);
-                          setCurrentView('beerDetails');
+                          navigate('/beer/' + beer.id);
                         }}
                       >
                         <div className="flex justify-between items-start">
@@ -994,7 +1049,7 @@ function App() {
   }
 
   // Create Event View
-  if (currentView === 'createEvent') {
+  if (location.pathname === '/create-event') {
     const handleCreateEvent = async () => {
       if (!selectedDate) {
         alert('Bitte wähle ein Datum aus!');
@@ -1062,7 +1117,7 @@ function App() {
                 <button
                   onClick={() => {
                     setSelectedDate('');
-                    setCurrentView('events');
+                    navigate('/events');
                   }}
                   disabled={submitLoading}
                   className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 disabled:opacity-50 text-white px-4 py-3 rounded-lg font-medium transition-colors"
@@ -1078,8 +1133,20 @@ function App() {
   }
 
   // Add Beers View - Redesigned for Huskies team workflow
-  if (currentView === 'addBeers') {
-    const currentEventBeers = getEventBeersForEvent(selectedEvent?.id || '');
+  if (location.pathname.includes('/add-beers')) {
+    if (!selectedEvent) {
+      // Still loading or event not found
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 flex items-center justify-center">
+          <div className="text-white text-center">
+            <LoadingIcon />
+            <p className="mt-4">Lade Event...</p>
+          </div>
+        </div>
+      );
+    }
+    
+    const currentEventBeers = getEventBeersForEvent(selectedEvent.id);
     const previouslyServedBeers = getPreviouslyServedBeers();
     
     return (
@@ -1281,7 +1348,7 @@ function App() {
   }
 
   // Rate Beers View - Enhanced for previous events
-  if (currentView === 'rateBeers') {
+  if (location.pathname === '/rate-beers') {
     const sortedEvents = events.sort((a, b) => new Date(b.date) - new Date(a.date));
     const currentEventBeers = selectedEvent ? getEventBeersForEvent(selectedEvent.id) : [];
     
@@ -1434,7 +1501,7 @@ function App() {
   }
 
   // Enhanced Statistics View (Secondary Use Case)
-  if (currentView === 'statistics') {
+  if (location.pathname === '/statistics') {
     // Calculate overall statistics
     const allServedBeers = getPreviouslyServedBeers();
     const allRatings = ratings.filter(r => r.rating > 0);
@@ -1600,7 +1667,7 @@ function App() {
                         className="bg-white bg-opacity-10 rounded-lg p-3 hover:bg-opacity-20 transition-colors cursor-pointer"
                         onClick={() => {
                           setSelectedBeer(beer);
-                          setCurrentView('beerDetails');
+                          navigate('/beer/' + beer.id);
                         }}
                       >
                         <div className="flex justify-between items-start">
@@ -1643,7 +1710,7 @@ function App() {
   }
 
   // EVENTS VIEW - Public view of all events with signup
-  if (currentView === 'events') {
+  if (location.pathname === '/events') {
     const todaysEvent = getTodaysEvent();
     const upcomingEvents = getUpcomingEvents();
     const pastEvents = getPastEvents();
@@ -1686,7 +1753,7 @@ function App() {
                 <button
                   onClick={() => {
                     setSelectedEvent(todaysEvent);
-                    setCurrentView('eventDetails');
+                    navigate('/event/' + todaysEvent.id);
                   }}
                   className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-xl font-semibold transition-colors"
                 >
@@ -1791,7 +1858,7 @@ function App() {
                           className="bg-white bg-opacity-10 rounded-xl p-4 cursor-pointer hover:bg-opacity-20 transition-colors"
                           onClick={() => {
                             setSelectedEvent(event);
-                            setCurrentView('eventDetails');
+                            navigate('/event/' + event.id);
                           }}
                         >
                           <div className="flex justify-between items-start">
@@ -1897,7 +1964,7 @@ function App() {
   }
 
   // HOME SCREEN - Today's Event Focus (Primary Use Case)
-  if (currentView === 'home') {
+  if (location.pathname === '/') {
     const todaysEvent = getTodaysEvent();
     const eventBeers = todaysEvent ? getEventBeersForEvent(todaysEvent.id) : [];
     const myRatings = todaysEvent ? getTodaysRatings(todaysEvent.id) : [];
@@ -1911,13 +1978,13 @@ function App() {
               label: 'Events',
               icon: null,
               className: 'bg-purple-600 hover:bg-purple-700 text-white',
-              onClick: () => setCurrentView('events')
+              onClick: () => navigate('/events')
             },
             {
               label: 'Stats',
               icon: <BarChartIcon />,
               className: 'bg-orange-600 hover:bg-orange-700 text-white',
-              onClick: () => setCurrentView('statistics')
+              onClick: () => navigate('/statistics')
             },
             {
               label: 'Admin',
@@ -1983,7 +2050,7 @@ function App() {
                       <button
                         onClick={() => {
                           setSelectedEvent(todaysEvent);
-                          setCurrentView('addBeers');
+                          navigate('/event/' + todaysEvent.id + '/add-beers');
                         }}
                         className="mt-3 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
                       >
@@ -2062,7 +2129,7 @@ function App() {
                             <button
                               onClick={() => {
                                 setSelectedEvent(todaysEvent);
-                                setCurrentView('addBeers');
+                                navigate('/event/' + todaysEvent.id + '/add-beers');
                               }}
                               className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors"
                             >
@@ -2084,15 +2151,15 @@ function App() {
                   Heute findet kein Event statt. Schau bei 'Events' für kommende Termine oder erstelle ein neues Event.
                 </p>
                 <div className="space-y-3">
-                  <button
-                    onClick={() => setCurrentView('events')}
+                <button
+                    onClick={() => navigate('/events')}
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors"
                   >
                     📅 Events ansehen
                   </button>
                   {events.length === 0 && (
                 <button
-                  onClick={() => setCurrentView('createEvent')}
+                  onClick={() => navigate('/create-event')}
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors"
                 >
                   Erstes Event erstellen
@@ -2115,7 +2182,7 @@ function App() {
                 <button
                   onClick={() => {
                     setShowAdminMenu(false);
-                    setCurrentView('createEvent');
+                    navigate('/create-event');
                   }}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors flex items-center gap-3"
                 >
@@ -2126,7 +2193,7 @@ function App() {
                 <button
                   onClick={() => {
                     setShowAdminMenu(false);
-                    setCurrentView('events');
+                    navigate('/events');
                   }}
                   className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
                 >
@@ -2136,7 +2203,7 @@ function App() {
                 <button
                   onClick={() => {
                     setShowAdminMenu(false);
-                    setCurrentView('rateBeers');
+                    navigate('/rate-beers');
                   }}
                   className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
                 >
@@ -2153,109 +2220,6 @@ function App() {
             </div>
           </div>
         )}
-      </div>
-    );
-  }
-
-  // Events Management View (Admin)
-  if (currentView === 'events') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700">
-        <Header 
-          title="Event Management" 
-          showBack={true}
-          actions={[
-            {
-              label: 'Event',
-              icon: <PlusIcon />,
-              className: 'bg-blue-600 hover:bg-blue-700 text-white',
-              onClick: () => setCurrentView('createEvent')
-            }
-          ]}
-        />
-        
-        <div className="px-4 py-6">
-          <div className="max-w-md mx-auto space-y-4">
-            {events.map((event) => {
-              const eventBeersList = getEventBeersForEvent(event.id);
-              const totalRatings = eventBeersList.reduce((sum, beer) => sum + getRatingsCount(event.id, beer.id), 0);
-              
-              return (
-                <div 
-                  key={event.id} 
-                  className="bg-white bg-opacity-10 backdrop-blur rounded-xl p-4 cursor-pointer hover:bg-opacity-20 transition-all"
-                  onClick={() => {
-                    setSelectedEvent(event);
-                    setCurrentView('eventDetails');
-                  }}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="text-2xl">🏒</div>
-                        <div>
-                          <h3 className="font-semibold text-white">
-                            {new Date(event.date).toLocaleDateString('de-DE', {
-                              weekday: 'long',
-                              month: 'short',
-                              day: 'numeric'
-                            })}
-                          </h3>
-                          <p className="text-xs text-white text-opacity-60">
-                            {new Date(event.date).getFullYear()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-4 mt-3">
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-white">{eventBeersList.length}</div>
-                          <div className="text-white text-opacity-70 text-xs">Getränke</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-white">{totalRatings}</div>
-                          <div className="text-white text-opacity-70 text-xs">Bewertungen</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {totalRatings > 0 && (
-                        <div className="bg-green-600 bg-opacity-30 p-2 rounded-lg">
-                          <BarChartIcon />
-                        </div>
-                      )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedEvent(event);
-                          setCurrentView('addBeers');
-                        }}
-                        className="bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg text-sm transition-colors text-white font-semibold"
-                      >
-                        + Getränke
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-            
-            {events.length === 0 && (
-              <div className="bg-white bg-opacity-10 backdrop-blur rounded-xl p-8 text-center">
-                <div className="text-6xl mb-4">🏒</div>
-                <h3 className="text-xl font-bold text-white mb-2">Noch keine Events</h3>
-                <p className="text-white text-opacity-70 mb-6">
-                  Erstelle das erste Event um loszulegen
-                </p>
-                <button
-                  onClick={() => setCurrentView('createEvent')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors"
-                >
-                  Erstes Event erstellen
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     );
   }
